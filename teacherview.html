@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Monaco Editor with Run Button and Terminal</title>
+  <!-- Load styles -->
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    /* IDE Editor container on the right 40% */
+    #container {
+      width: 40%;
+      height: calc(100% - 160px);
+      position: fixed;
+      top: 0;
+      right: 0;
+    }
+    /* Run button container styling */
+    #runContainer {
+      width: 80px;
+      position: fixed;
+      right: calc(40% - 60px);
+      top: calc(100% - 160px);
+    }
+    /* Output container using pre tag instead of xterm */
+    #output-container {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      width: 40%;
+      height: 120px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      font-family: monospace;
+      padding: 10px;
+      overflow: auto;
+      box-sizing: border-box;
+      border-top: 1px solid #444;
+    }
+    #runButton {
+      position: fixed;
+      right: calc(40% - 80px);
+      width: 80px;
+      height: 30px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #runButton:hover {
+      background-color: #45a049;
+    }
+    /* Debug log area - temporarily hidden */
+    #debug-log {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 60%;
+        height: 120px;
+        background: #f0f0f0;
+        color: #333;
+        padding: 10px;
+        overflow: auto;
+        font-family: monospace;
+        font-size: 12px;
+        display: none; /* Add this line to hide it */
+    }
+    /* Styling for output console */
+    .output-text {
+      margin: 0;
+      padding: 2px 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .error-text {
+      color: #ff6b6b;
+    }
+    .success-text {
+      color: #6bff6b;
+    }
+    .info-text {
+      color: #6bb6ff;
+    }
+    /* Updated slides container to fill the left 60% */
+    #slides-container {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 55%;
+      height: calc(100%); /* Adjust for debug log */
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+    #slides-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="slides-container">
+        <!-- Google Slides Embed with removed fixed dimensions -->
+        <iframe src="https://docs.google.com/presentation/d/e/2PACX-1vQP6FAykLuz88U3X9kTCvm55G8DGmFHMSsW6eYQcbT38EjHjVcFp-B8yxNNTWj9BjQkQsE-YOkSnHuJ/pubembed?start=false&loop=false&delayms=3000"
+                allowfullscreen="true" 
+                mozallowfullscreen="true" 
+                webkitallowfullscreen="true">
+        </iframe> 
+  </div>
+  <div id="container"></div>
+  <div id="runContainer">
+    <button id="runButton">Run</button>
+  </div>
+  <div id="output-container">
+    <pre id="output">Terminal ready. Click "Run" to execute code.</pre>
+  </div>
+  <div id="debug-log">Debug messages will appear here...</div>
+
+  <!-- Load Monaco Editor -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
+  
+  <script>
+    // Debug log function
+    function debugLog(msg) {
+      var debugArea = document.getElementById('debug-log');
+      var now = new Date().toISOString().substr(11, 8);
+      debugArea.innerHTML += `[${now}] ${msg}<br>`;
+      debugArea.scrollTop = debugArea.scrollHeight;
+    }
+    
+    // Output log function
+    function outputLog(msg, type = 'normal') {
+      var output = document.getElementById('output');
+      var line = document.createElement('div');
+      line.className = 'output-text';
+      
+      if (type === 'error') {
+        line.classList.add('error-text');
+      } else if (type === 'success') {
+        line.classList.add('success-text');
+      } else if (type === 'info') {
+        line.classList.add('info-text');
+      }
+      
+      line.textContent = msg;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    // Clear output
+    function clearOutput() {
+      document.getElementById('output').innerHTML = '';
+    }
+    
+    debugLog("Script starting");
+
+    // Configure Monaco Editor after page loads
+    window.onload = function() {
+      debugLog("Window loaded");
+      
+      // Configure Monaco Editor
+      require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs'}});
+      require(['vs/editor/editor.main'], function () {
+        debugLog("Monaco loaded");
+        
+        var editor = monaco.editor.create(document.getElementById('container'), {
+          value: [
+            '// Write your JavaScript code here',
+            'console.log("Hello, world!");'
+          ].join('\n'),
+          language: 'javascript',
+          theme: 'vs-dark'
+        });
+        
+        debugLog("Editor created");
+        
+        // Run button functionality with console.log override
+        document.getElementById('runButton').addEventListener('click', function() {
+            debugLog("Run button clicked");
+            
+            var code = editor.getValue();
+            debugLog("Got code from editor: " + code.substring(0, 20) + "...");
+            
+            // Clear output before new run
+            clearOutput();
+            outputLog('> Running code...', 'info');
+            
+            // Save the original console methods
+            var originalConsoleLog = console.log;
+            var originalConsoleError = console.error;
+            var originalConsoleWarn = console.warn;
+            
+            // Override console methods
+            console.log = function(...args) {
+                var message = args.map(arg => String(arg)).join(' ');
+                outputLog(message);
+                debugLog("Console.log: " + message);
+                originalConsoleLog.apply(console, args);
+            };
+            
+            console.error = function(...args) {
+                var message = args.map(arg => String(arg)).join(' ');
+                outputLog(message, 'error');
+                debugLog("Console.error: " + message);
+                originalConsoleError.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                var message = args.map(arg => String(arg)).join(' ');
+                outputLog(message, 'warning');
+                debugLog("Console.warn: " + message);
+                originalConsoleWarn.apply(console, args);
+            };
+
+            try {
+              debugLog("Executing code...");
+              // Execute the code using Function for better safety than eval
+              var executeCode = new Function(code);
+              var result = executeCode();
+              
+              if (result !== undefined) {
+                outputLog('> Result: ' + String(result));
+                debugLog("Execution result: " + String(result));
+              } else {
+                debugLog("Execution completed with no explicit result");
+              }
+              
+              outputLog('Code executed successfully', 'success');
+            } catch (error) {
+              outputLog('Error: ' + error.message, 'error');
+              debugLog("Execution error: " + error.message);
+            } finally {
+              // Restore the original console methods
+              console.log = originalConsoleLog;
+              console.error = originalConsoleError;
+              console.warn = originalConsoleWarn;
+              debugLog("Console methods restored");
+            }
+        });
+        
+        debugLog("Run button event listener added");
+      });
+    };
+  </script>
+</body>
+</html>
