@@ -58,18 +58,18 @@
     }
     /* Debug log area - temporarily hidden */
     #debug-log {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 60%;
-        height: 120px;
-        background: #f0f0f0;
-        color: #333;
-        padding: 10px;
-        overflow: auto;
-        font-family: monospace;
-        font-size: 12px;
-        display: none; /* Add this line to hide it */
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: 60%;
+      height: 120px;
+      background: #f0f0f0;
+      color: #333;
+      padding: 10px;
+      overflow: auto;
+      font-family: monospace;
+      font-size: 12px;
+      display: none; /* Hidden by default */
     }
     /* Styling for output console */
     .output-text {
@@ -93,7 +93,7 @@
       left: 0;
       top: 0;
       width: 55%;
-      height: calc(100%); /* Adjust for debug log */
+      height: 100%;
       padding: 0;
       margin: 0;
       overflow: hidden;
@@ -105,17 +105,58 @@
       margin: 0;
       padding: 0;
     }
+/* --- Teacher Lobby Overlay Styles --- */
+    #teacherLobbyContent {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px; /* Fixed width for the box */
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-y: auto;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      text-align: center; /* Centers text inside the box */
+    }
+    #closeLobbyButton {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #d9534f;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    /* Toggle button for reopening teacher lobby overlay */
+    #toggleJoinCode {
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      z-index: 2100;
+      background-color: #4CAF50;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none; /* Hidden while overlay is visible */
+    }
   </style>
 </head>
 <body>
 
   <div id="slides-container">
-        <!-- Google Slides Embed with removed fixed dimensions -->
-        <iframe src="https://docs.google.com/presentation/d/e/2PACX-1vQP6FAykLuz88U3X9kTCvm55G8DGmFHMSsW6eYQcbT38EjHjVcFp-B8yxNNTWj9BjQkQsE-YOkSnHuJ/pubembed?start=false&loop=false&delayms=3000"
-                allowfullscreen="true" 
-                mozallowfullscreen="true" 
-                webkitallowfullscreen="true">
-        </iframe> 
+    <!-- Google Slides Embed with removed fixed dimensions -->
+    <iframe src="https://docs.google.com/presentation/d/e/2PACX-1vQP6FAykLuz88U3X9kTCvm55G8DGmFHMSsW6eYQcbT38EjHjVcFp-B8yxNNTWj9BjQkQsE-YOkSnHuJ/pubembed?start=false&loop=false&delayms=3000"
+            allowfullscreen="true" 
+            mozallowfullscreen="true" 
+            webkitallowfullscreen="true">
+    </iframe> 
   </div>
   <div id="container"></div>
   <div id="runContainer">
@@ -125,7 +166,35 @@
     <pre id="output">Terminal ready. Click "Run" to execute code.</pre>
   </div>
   <div id="debug-log">Debug messages will appear here...</div>
+  
+<!-- Teacher Lobby Overlay (appears on top of the teacher view) -->
+<div id="teacherLobbyOverlay">
+  <div id="teacherLobbyContent">
+    <button id="closeLobbyButton">X</button>
+    <h2>jointomato.com</h2>
+    <!-- The join code will be displayed here -->
+    <h1 id="joinCodeDisplay"></h1>
+    <p id="NoSCDisplay"></p>
 
+  </div>
+</div>
+
+<script>
+  // Generate a random 6-letter join code from A-Z
+  var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var code = '';
+  for (var i = 0; i < 6; i++) {
+    code += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+  // Update the join code display with the generated code
+  document.getElementById('joinCodeDisplay').textContent = code;
+  document.getElementById('NoSCDisplay').textContent = " students connected.";
+</script>
+
+  
+  <!-- Toggle button to reopen the Teacher Lobby overlay -->
+  <button id="toggleJoinCode">Show Join Code</button>
+  
   <!-- Load Monaco Editor -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs/loader.min.js"></script>
   
@@ -157,18 +226,18 @@
       output.scrollTop = output.scrollHeight;
     }
     
-    // Clear output
+    // Clear output function
     function clearOutput() {
       document.getElementById('output').innerHTML = '';
     }
     
     debugLog("Script starting");
-
+    
     // Configure Monaco Editor after page loads
     window.onload = function() {
       debugLog("Window loaded");
       
-      // Configure Monaco Editor
+      // Configure Monaco Editor paths
       require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.1/min/vs'}});
       require(['vs/editor/editor.main'], function () {
         debugLog("Monaco loaded");
@@ -186,71 +255,102 @@
         
         // Run button functionality with console.log override
         document.getElementById('runButton').addEventListener('click', function() {
-            debugLog("Run button clicked");
+          debugLog("Run button clicked");
+          
+          var code = editor.getValue();
+          debugLog("Got code from editor: " + code.substring(0, 20) + "...");
+          
+          // Clear output before running new code
+          clearOutput();
+          outputLog('> Running code...', 'info');
+          
+          // Save the original console methods
+          var originalConsoleLog = console.log;
+          var originalConsoleError = console.error;
+          var originalConsoleWarn = console.warn;
+          
+          // Override console methods for output and debug logging
+          console.log = function(...args) {
+            var message = args.map(arg => String(arg)).join(' ');
+            outputLog(message);
+            debugLog("Console.log: " + message);
+            originalConsoleLog.apply(console, args);
+          };
+          
+          console.error = function(...args) {
+            var message = args.map(arg => String(arg)).join(' ');
+            outputLog(message, 'error');
+            debugLog("Console.error: " + message);
+            originalConsoleError.apply(console, args);
+          };
+          
+          console.warn = function(...args) {
+            var message = args.map(arg => String(arg)).join(' ');
+            outputLog(message, 'warning');
+            debugLog("Console.warn: " + message);
+            originalConsoleWarn.apply(console, args);
+          };
+    
+          try {
+            debugLog("Executing code...");
+            // Execute code using Function constructor
+            var executeCode = new Function(code);
+            var result = executeCode();
             
-            var code = editor.getValue();
-            debugLog("Got code from editor: " + code.substring(0, 20) + "...");
-            
-            // Clear output before new run
-            clearOutput();
-            outputLog('> Running code...', 'info');
-            
-            // Save the original console methods
-            var originalConsoleLog = console.log;
-            var originalConsoleError = console.error;
-            var originalConsoleWarn = console.warn;
-            
-            // Override console methods
-            console.log = function(...args) {
-                var message = args.map(arg => String(arg)).join(' ');
-                outputLog(message);
-                debugLog("Console.log: " + message);
-                originalConsoleLog.apply(console, args);
-            };
-            
-            console.error = function(...args) {
-                var message = args.map(arg => String(arg)).join(' ');
-                outputLog(message, 'error');
-                debugLog("Console.error: " + message);
-                originalConsoleError.apply(console, args);
-            };
-            
-            console.warn = function(...args) {
-                var message = args.map(arg => String(arg)).join(' ');
-                outputLog(message, 'warning');
-                debugLog("Console.warn: " + message);
-                originalConsoleWarn.apply(console, args);
-            };
-
-            try {
-              debugLog("Executing code...");
-              // Execute the code using Function for better safety than eval
-              var executeCode = new Function(code);
-              var result = executeCode();
-              
-              if (result !== undefined) {
-                outputLog('> Result: ' + String(result));
-                debugLog("Execution result: " + String(result));
-              } else {
-                debugLog("Execution completed with no explicit result");
-              }
-              
-              outputLog('Code executed successfully', 'success');
-            } catch (error) {
-              outputLog('Error: ' + error.message, 'error');
-              debugLog("Execution error: " + error.message);
-            } finally {
-              // Restore the original console methods
-              console.log = originalConsoleLog;
-              console.error = originalConsoleError;
-              console.warn = originalConsoleWarn;
-              debugLog("Console methods restored");
+            if (result !== undefined) {
+              outputLog('> Result: ' + String(result));
+              debugLog("Execution result: " + String(result));
+            } else {
+              debugLog("Execution completed with no explicit result");
             }
+            
+            outputLog('Code executed successfully', 'success');
+          } catch (error) {
+            outputLog('Error: ' + error.message, 'error');
+            debugLog("Execution error: " + error.message);
+          } finally {
+            // Restore the original console methods
+            console.log = originalConsoleLog;
+            console.error = originalConsoleError;
+            console.warn = originalConsoleWarn;
+            debugLog("Console methods restored");
+          }
         });
         
         debugLog("Run button event listener added");
       });
     };
+  </script>
+  
+  <!-- Teacher Lobby Overlay Script -->
+  <script>
+    // Function to hide the teacher lobby overlay and show the toggle button
+    function hideTeacherLobby() {
+      document.getElementById('teacherLobbyOverlay').style.display = 'none';
+      document.getElementById('toggleJoinCode').style.display = 'block';
+      document.getElementById('toggleJoinCode').textContent = 'Show Join Code';
+    }
+    
+    // Function to show the teacher lobby overlay
+    function showTeacherLobby() {
+      document.getElementById('teacherLobbyOverlay').style.display = 'block';
+      document.getElementById('toggleJoinCode').textContent = 'Hide Join Code';
+    }
+    
+    // When the close (X) button in the overlay is clicked, hide the overlay
+    document.getElementById('closeLobbyButton').addEventListener('click', function() {
+      hideTeacherLobby();
+    });
+    
+    // Toggle the visibility of the teacher lobby overlay when the toggle button is clicked
+    document.getElementById('toggleJoinCode').addEventListener('click', function() {
+      var overlay = document.getElementById('teacherLobbyOverlay');
+      if (overlay.style.display === 'none' || overlay.style.display === '') {
+        showTeacherLobby();
+      } else {
+        hideTeacherLobby();
+      }
+    });
   </script>
 </body>
 </html>
