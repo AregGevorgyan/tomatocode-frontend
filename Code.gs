@@ -3,9 +3,8 @@
  */
 
 // --- Configuration ---
-// Replace with your actual backend URL
+// !!! REPLACE WITH YOUR ACTUAL URLs !!!
 const BACKEND_URL = "https://your-ec2-backend-domain.com/api/sessions/create"; 
-// Replace with your actual frontend teacher view URL base
 const TEACHER_VIEW_BASE_URL = "https://tomatocode.xyz/teacher/"; 
 // Marker text to identify coding question slides in speaker notes
 const CODING_SLIDE_MARKER = "[PEARCODE_QUESTION]"; 
@@ -61,32 +60,54 @@ function openEmptyQuestionDialog() {
  */
 function addInteractiveSlideMarker() {
   try {
-    const slide = SlidesApp.getActivePresentation().getSelection().getCurrentPage();
-    if (!slide) {
-      throw new Error("No slide selected.");
-    }
+    const presentation = SlidesApp.getActivePresentation();
+    const selection = presentation.getSelection();
+    const currentPage = selection.getCurrentPage();
 
-    const speakerNotesShape = slide.getSpeakerNotesShape();
+    // Ensure something is selected and it's a slide
+    if (!currentPage || currentPage.getPageType() !== SlidesApp.PageType.SLIDE) {
+       throw new Error("Please select a slide first.");
+    }
+    
+    const slide = currentPage.asSlide(); // Cast Page to Slide
+    const notesPage = slide.getNotesPage();
+
+    if (!notesPage) {
+       // This is unlikely for a normal slide, but good to check.
+       throw new Error("Could not access the speaker notes page for this slide.");
+    }
+    
+    // *** FIX: Get the shape from the notesPage, not the slide ***
+    const speakerNotesShape = notesPage.getSpeakerNotesShape(); 
+
     if (!speakerNotesShape) {
-      // If no speaker notes shape exists, we might need to create one or handle this case.
-      // For simplicity, we'll just add the text. Slides usually creates one if needed.
-      slide.insertSpeakerNotes(CODING_SLIDE_MARKER + "\nPrompt: [Enter your question prompt here]");
+      // If no speaker notes shape exists yet, insert the text which often creates it.
+      // Note: slide.insertSpeakerNotes() is deprecated, use notesPage methods if possible,
+      // but modifying the shape directly is preferred. Let's try creating text if shape is null.
+       notesPage.getPlaceholder(SlidesApp.PlaceholderType.BODY) // Often the notes placeholder
+                .asShape().getText().setText(CODING_SLIDE_MARKER + "\nPrompt: [Enter your question prompt here]");
+       Logger.log("Inserted marker into notes placeholder as shape didn't exist.");
+
     } else {
       const notes = speakerNotesShape.getText().asString();
       // Avoid adding duplicate markers
       if (!notes.includes(CODING_SLIDE_MARKER)) {
-         speakerNotesShape.getText().insertText(0, CODING_SLIDE_MARKER + "\nPrompt: [Enter your question prompt here]\n");
+         // Prepend the marker to existing notes
+         speakerNotesShape.getText().insertText(0, CODING_SLIDE_MARKER + "\nPrompt: [Enter your question prompt here]\n\n");
+         Logger.log("Prepended marker to existing speaker notes.");
       } else {
          // Optional: Notify user it's already marked
          SlidesApp.getUi().alert("This slide is already marked as a coding question.");
+         return; // Don't show the success alert below if already marked.
       }
     }
+    
      SlidesApp.getUi().alert("Coding question marker added to speaker notes. Edit the notes to add your specific prompt.");
 
   } catch (error) {
-    Logger.log("Error adding marker: " + error);
+    Logger.log("Error adding marker: " + error + "\nStack: " + error.stack); // Log stack trace
     SlidesApp.getUi().alert("Error: Could not add coding question marker. " + error.message);
-    // Re-throw for failure handler in dialog if needed, though alert is usually sufficient
+    // Re-throw for failure handler in dialog
     throw error; 
   }
 }
@@ -101,38 +122,68 @@ function initiateLessonSession() {
   try {
     const presentation = SlidesApp.getActivePresentation();
     const presentationTitle = presentation.getName();
+    const presentationId = presentation.getId(); // Get the presentation ID
     const slides = presentation.getSlides();
     
+    // Construct the embed URL (adjust parameters as needed)
+    // IMPORTANT: The presentation MUST be published to the web for this embed URL to work without login.
+    // File -> Share -> Publish to web -> Embed tab -> Publish. 
+    // Or ensure link sharing allows anyone with the link to view.
+    // A simpler embed URL often works if published:
+    const embedUrl = `https://docs.google.com/presentation/d/${presentationId}/embed?start=false&loop=false&delayms=60000`; 
+    // Alternative using the published link structure (might require extracting the pub URL if already published)
+    // const pubUrl = `https://docs.google.com/presentation/d/e/YOUR_PUBLISHED_ID/embed?start=false&loop=false&delayms=3000`;
+
+
+    Logger.log(`Presentation ID: ${presentationId}`);
+    Logger.log(`Generated Embed URL: ${embedUrl}`);
+
     const slideData = slides.map((slide, index) => {
       let hasCodingTask = false;
-      let prompt = null;
-      const speakerNotesShape = slide.getSpeakerNotesShape();
-      
-      if (speakerNotesShape) {
-        const notes = speakerNotesShape.getText().asString();
-        if (notes.includes(CODING_SLIDE_MARKER)) {
-          hasCodingTask = true;
-          // Basic prompt extraction (assumes "Prompt:" follows the marker)
-          const promptMatch = notes.match(/Prompt:(.*)/i);
-          if (promptMatch && promptMatch[1]) {
-            prompt = promptMatch[1].trim();
-          } else {
-            prompt = "[Prompt not specified in notes]"; // Default if format is wrong
-          }
-        }
-      }
-      
-      // Try to get a title from the slide (might be empty)
+      let prompt = "[No Prompt Specified]"; // Default prompt
       let title = `Slide ${index + 1}`; 
-      const titleShapes = slide.getShapes().filter(s => s.getText().find(/^.+$/)); // Find shapes with text
-      if (titleShapes.length > 0) {
-         // Heuristic: assume the first shape with text is the title
-         title = titleShapes[0].getText().asString().trim().substring(0, 50); // Limit length
+
+      try {
+          const notesPage = slide.getNotesPage();
+          if (notesPage) {
+              const speakerNotesShape = notesPage.getSpeakerNotesShape();
+              if (speakerNotesShape) {
+                  const notes = speakerNotesShape.getText().asString();
+                  if (notes.includes(CODING_SLIDE_MARKER)) {
+                      hasCodingTask = true;
+                      // Improved prompt extraction (case-insensitive, multiline)
+                      const promptMatch = notes.match(/\[PEARCODE_QUESTION\]\s*Prompt:\s*([\s\S]*)/i);
+                      if (promptMatch && promptMatch[1]) {
+                          prompt = promptMatch[1].trim();
+                      } else {
+                          // Fallback if marker exists but prompt format is wrong
+                          prompt = "[Prompt Format Error in Notes]"; 
+                      }
+                  }
+              }
+          }
+
+          // Try to get a title from the slide (might be empty)
+          // Use page elements instead of shapes for potentially better title identification
+          const pageElements = slide.getPageElements();
+          for (let i = 0; i < pageElements.length; i++) {
+              if (pageElements[i].getPageElementType() === SlidesApp.PageElementType.SHAPE) {
+                  const shape = pageElements[i].asShape();
+                  if (shape.getText && shape.getText().asString().trim().length > 0) {
+                      // Heuristic: Assume the first non-empty shape is the title
+                      title = shape.getText().asString().trim().substring(0, 80); // Limit length
+                      break; 
+                  }
+              }
+          }
+      } catch (slideError) {
+           Logger.log(`Error processing slide ${index}: ${slideError}`);
+           // Use defaults if an error occurs processing a single slide
       }
 
       return {
         index: index,
-        title: title, // Use slide index or extracted title
+        title: title, 
         hasCodingTask: hasCodingTask,
         prompt: prompt 
       };
@@ -142,9 +193,11 @@ function initiateLessonSession() {
     const payload = {
       title: presentationTitle || 'Untitled Presentation',
       description: `Coding session for ${presentationTitle}`,
-      language: 'javascript', // Or make this configurable? Defaulting for now.
-      initialCode: '// Start coding here!', // Default initial code
-      slides: slideData // Send the structured slide info
+      language: 'javascript', // Default language
+      initialCode: '// Start your code here!\n', // Default initial code
+      slides: slideData, // Send the structured slide info
+      presentationId: presentationId, // Send the ID
+      embedUrl: embedUrl // Send the constructed embed URL
     };
 
     const options = {
@@ -155,39 +208,46 @@ function initiateLessonSession() {
     };
 
     Logger.log("Sending session creation request to: " + BACKEND_URL);
-    Logger.log("Payload: " + JSON.stringify(payload));
+    // Logger.log("Payload: " + JSON.stringify(payload)); // Log payload only if needed for debugging sensitive data
 
     const response = UrlFetchApp.fetch(BACKEND_URL, options);
     const responseCode = response.getResponseCode();
     const responseBody = response.getContentText();
 
     Logger.log("Backend Response Code: " + responseCode);
-    Logger.log("Backend Response Body: " + responseBody);
+    // Logger.log("Backend Response Body: " + responseBody); // Log response body carefully
 
     if (responseCode === 201) {
       const jsonResponse = JSON.parse(responseBody);
       if (jsonResponse.success && jsonResponse.sessionCode) {
         const teacherUrl = TEACHER_VIEW_BASE_URL + jsonResponse.sessionCode;
-        Logger.log("Session created. Teacher URL: " + teacherUrl);
+        Logger.log("Session created successfully. Teacher URL: " + teacherUrl);
         return teacherUrl; // Return URL to sidebar JS
       } else {
-        throw new Error("Backend response missing success flag or session code. Response: " + responseBody);
+        throw new Error("Backend response format error. Missing success flag or session code. Response: " + responseBody);
       }
     } else {
-      // Handle backend errors
-       let errorMessage = `Backend error (${responseCode}).`;
+      // Handle backend errors more informatively
+       let errorMessage = `Backend communication error (Code: ${responseCode}).`;
        try {
          const errorJson = JSON.parse(responseBody);
-         errorMessage += ` Message: ${errorJson.message || responseBody}`;
+         // Append backend's message if available
+         if(errorJson.message) {
+             errorMessage += ` Server message: ${errorJson.message}`;
+         } else {
+             errorMessage += ` Response: ${responseBody}`;
+         }
        } catch(e) {
-         errorMessage += ` Response: ${responseBody}`;
+         // If response is not JSON
+         errorMessage += ` Raw Response: ${responseBody}`;
        }
+      Logger.log("Backend error details: " + errorMessage);
       throw new Error(errorMessage);
     }
 
   } catch (error) {
-    Logger.log("Error initiating lesson session: " + error);
-    // Re-throw the error so the failure handler in Sidebar.html can catch it
-    throw new Error("Failed to start lesson: " + error.message); 
+    Logger.log("Error initiating lesson session: " + error + "\nStack: " + error.stack);
+    // Provide a user-friendly message but log the technical details
+    throw new Error("Failed to start lesson session. Please check logs or contact support. Error: " + error.message); 
   }
 }
