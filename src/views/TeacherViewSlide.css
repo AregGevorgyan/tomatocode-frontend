@@ -1,0 +1,94 @@
+/* Base App Styling */
+.App {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden; /* Keep this */
+}
+
+.App-header {
+  background-color: #282c34; /* Keep dark background */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row; /* Children (slides, right-panel) sit side-by-side */
+  font-size: calc(10px + 1vmin); /* Keep smaller font */
+  color: white; /* Base text color */
+}
+
+/* Slides Container - Takes up 80% */
+.slides-container {
+  width: 80%; /* MODIFIED: Takes up most of the screen */
+  height: 100vh; /* Full height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px; /* Padding around the iframe */
+  box-sizing: border-box;
+  background-color: #a70000; /* White background for the slide area */
+  /* Or use transparent if you want App-header color to show through padding */
+  /* background-color: transparent; */
+}
+
+/* iframe styling */
+.slides-container > div,
+.slides-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Right Side Control Panel - Takes up 20% */
+.right-side.control-panel { /* Made selector more specific */
+  width: 20%; /* MODIFIED: Takes remaining space */
+  height: 100vh; /* Full height */
+  display: flex;
+  flex-direction: column; /* Stack button groups vertically */
+  justify-content: space-between; /* Pushes top group up, bottom group down */
+  align-items: stretch; /* Makes children take full width */
+  padding: 20px; /* Padding inside the panel */
+  box-sizing: border-box;
+  background-color: #420101; /* Dark red background */
+}
+
+/* Container for the top buttons */
+.top-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Space between the top buttons */
+}
+
+/* Container for the bottom button (assists with space-between) */
+.bottom-button {
+  display: flex;
+  /* No extra styles needed currently, but provides structure */
+}
+
+/* Styling for ALL control buttons */
+.control-button {
+  padding: 12px 15px;
+  background-color: #b80101; /* Darker Red */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px; /* Adjust as needed */
+  font-weight: bold;
+  text-align: center;
+  transition: background-color 0.2s ease; /* Smooth hover effect */
+  width: 100%; /* Make buttons fill panel width */
+  box-sizing: border-box;
+}
+
+.control-button:hover {
+  background-color: #7a0000; /* Slightly lighter red on hover */
+}
+
+/* Optional: Specific style if needed for the end session button */
+.end-session-button {
+  background-color: #3700ff; /* Bright red for end session */
+}
+
+
+/* --- REMOVED CSS --- */
+/* Rules for .run-button, .code-editor-container, .terminal-container, */
+/* .terminal-output, .output-line are no longer needed for this view */
+/* and have been deleted. */

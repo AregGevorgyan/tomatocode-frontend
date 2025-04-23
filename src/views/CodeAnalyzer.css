@@ -1,0 +1,113 @@
+
+.code-analyzer {
+  font-family: sans-serif;
+  padding: 20px;
+  max-width: 800px;
+  margin: 20px auto; /* Added top/bottom margin */
+  border: 1px solid #ddd; /* Optional: Add a border */
+  border-radius: 8px; /* Optional: Rounded corners */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Optional: Subtle shadow */
+  background-color: #fff; /* Ensure background */
+}
+
+.code-analyzer h1 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #333;
+}
+
+.code-analyzer-message {
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  font-weight: bold;
+  text-align: center; /* Center align messages */
+}
+
+.code-analyzer-message.warning {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+}
+
+.code-analyzer-message.error {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+
+.code-analyzer-input-group {
+  margin-bottom: 20px; /* Increased spacing */
+}
+
+.code-analyzer-label {
+  display: block;
+  margin-bottom: 8px; /* Increased spacing */
+  font-weight: bold;
+  color: #555;
+}
+
+.code-analyzer-textarea {
+  width: 100%;
+  padding: 10px; /* Slightly more padding */
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px; /* Rounded corners for textareas */
+  font-size: 14px; /* Slightly larger font */
+  min-height: 100px; /* Ensure a minimum height */
+}
+
+.code-analyzer-textarea-code {
+  font-family: monospace;
+  min-height: 200px; /* More height for code */
+  background-color: #f9f9f9; /* Light background for code */
+}
+
+.code-analyzer-button {
+  display: block; /* Make button block level */
+  width: 100%; /* Make button full width */
+  padding: 12px 20px; /* Larger padding */
+  font-size: 16px;
+  font-weight: bold; /* Bold text */
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease; /* Smooth transition */
+  margin-top: 10px; /* Add some space above */
+}
+
+.code-analyzer-button:hover:not(:disabled) {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+.code-analyzer-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed; /* Indicate disabled state */
+}
+
+.code-analyzer-results {
+  margin-top: 30px; /* More space above results */
+  padding: 20px;
+  border: 1px solid #eee;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.code-analyzer-results h2 {
+  margin-top: 0; /* Remove default top margin */
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.code-analyzer-results p {
+  margin-bottom: 10px;
+  line-height: 1.5; /* Improve readability */
+}
+
+.code-analyzer-results strong {
+  color: #555; /* Slightly darker labels */
+  margin-right: 5px; /* Space after label */
+}
