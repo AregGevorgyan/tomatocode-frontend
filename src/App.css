@@ -1,0 +1,110 @@
+
+
+
+
+.App {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden; /* Keep this */
+}
+
+.App-header {
+  background-color: #282c34; /* Keep dark background */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  font-size: calc(10px + 1vmin); /* Keep smaller font */
+  color: white;
+}
+
+.slides-container {
+  width: 55%; /* Adjusted width */
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: #a70000; /* Keep white background for slides */
+}
+
+.slides-container > div {
+  width: 100%;
+  height: 100%;
+}
+
+.slides-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.right-side {
+  width: 45%; /* Adjusted width */
+  height: 100vh;
+  display: flex;
+  flex-direction: column; /* Stacks children vertically */
+  padding: 10px;
+  box-sizing: border-box;
+  gap: 10px; /* This will create space between editor, button, and terminal */
+  background-color: #a70000;
+}
+
+.run-button {
+  padding: 8px 16px;
+  background-color: #4CAF50; /* Green */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  align-self: flex-start; /* Align button to the start (left) */
+}
+
+.run-button:hover {
+  background-color: #45a049;
+}
+
+.code-editor-container {
+  flex-grow: 1; /* Takes up available vertical space */
+  border: 1px solid #444;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px; /* Minimum height */
+}
+
+.terminal-container {
+  width: 100%;
+  height: 150px; /* Fixed height */
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  border: 1px solid #444;
+  box-sizing: border-box; /* Already here, good */
+  display: flex; /* Keep flex */
+  flex-direction: column; /* Explicitly stack children (only one here, but good practice) */
+  flex-shrink: 0;
+  overflow: hidden; /* Keep this: prevents container scrollbars */
+}
+
+.terminal-output { /* Styles for the <pre> tag */
+  flex-grow: 1; /* Allows it to fill the flex container's height */
+  /* height: 100%; */ /* Flex-grow might be sufficient, or use min-height */
+  min-height: 0; /* Crucial for flex children that need to scroll */
+  padding: 10px;
+  margin: 0; /* Remove default pre margin */
+  overflow-y: auto; /* Allows vertical scrolling when content exceeds height */
+  white-space: pre-wrap; /* Allows lines to wrap */
+  word-wrap: break-word; /* Breaks long words */
+  box-sizing: border-box; /* <<< Add this line explicitly */
+}
+
+.output-line {
+  min-height: 1.2em; /* Ensures lines have some height */
+}
+.output-line.log { color: #d4d4d4; }
+.output-line.info { color: #6bb6ff; }
+.output-line.success { color: #6bff6b; }
+.output-line.warn { color: #f7e776; }
+.output-line.error { color: #ff6b6b; }
